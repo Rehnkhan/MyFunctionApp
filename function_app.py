@@ -4,8 +4,9 @@ from pymongo import MongoClient
 from gridfs import GridFS
 from image_processing.process_img import process_img
 from image_processing.process_vedio import process_video
-app = func.FunctionApp()
 from bson import ObjectId
+
+app = func.FunctionApp()
 
 @app.timer_trigger(schedule="*/10 * * * * *", arg_name="myTimer", run_on_startup=False,
               use_monitor=False) 
