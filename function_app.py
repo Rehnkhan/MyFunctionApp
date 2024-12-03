@@ -1,5 +1,5 @@
 import azure.functions as func
-import datetime,json,logging,os,time
+import datetime, json, logging, os, time
 from pymongo import MongoClient
 from gridfs import GridFS
 from image_processing.process_img import process_img
@@ -18,7 +18,7 @@ def TimerTriggerFunction(myTimer: func.TimerRequest) -> None:
     # Current UTC time
     current_utc_time = datetime.datetime.now(datetime.timezone.utc).isoformat()
     
-    #get the connection string from the environment variable
+    # Get the connection string from the environment variable
     connection_string = os.getenv('MONGO_CONNECTION_STRING')
     
     if not connection_string:
@@ -39,73 +39,52 @@ def TimerTriggerFunction(myTimer: func.TimerRequest) -> None:
     try:
         tasks = client['taskmaster']['tasks']
         
-        for task in tasks.find({'assigned_to':"cloud",'started_at':None}):
+        for task in tasks.find({'assigned_to': "cloud", 'started_at': None}):
             tasks.update_one({"_id": task['_id']}, {"$set": {"started_at": datetime.datetime.now()}})
-            compute(task.get('_id'),client['taskmaster'])
-            logging.info(task)
+            compute(str(task.get('_id')), client['taskmaster'])  # Convert ObjectId to string
+            # logging.info(task)
             
         
         logging.info('Python timer trigger function executed.')
     except Exception as e:
         logging.error(f'An error occurred: {e}')
-    finally:
-        client.close()
-        
 
 def compute(task_id, db):
     try:
         fs = GridFS(db)
-        filee = fs.find_one({"_id": ObjectId(task_id)})
-        tasks=db['tasks']
+        filee = fs.find_one({"_id": ObjectId(task_id)})  # Convert task_id back to ObjectId
+        tasks = db['tasks']
         if not filee:
             raise Exception("File not found in GridFS with the provided task_id")
-
         # Create a directory for saving the file if it does not exist
         save_dir = 'working_files'
         if not os.path.exists(save_dir):
             os.makedirs(save_dir)
-
     
-        #adjusting the file name to avoid overwriting 
+        # Adjusting the file name to avoid overwriting 
         filename, file_extension = os.path.splitext(filee.filename)
         
-        file_extension=file_extension.strip()
-        new_filename = task_id + file_extension
-        op_new_f_name="computed_"+task_id 
-        # Ensure the file extension is stripped of any leading/trailing whitespace
-  
-
-        # Construct the file path using the new filename
-        file_path = os.path.join(save_dir, new_filename)
-        # print(file_path)
-
-        # Save the file to the directory
+        new_filename = str(task_id) + file_extension  # Ensure task_id is a string
         
+        file_path = os.path.join(save_dir, filename + file_extension)
+        
+        # Save the file to the directory
         with open(file_path, "wb") as f:
             f.write(filee.read())
-            logging.info("file saved successfully")
-
-        if file_extension==".jpg" or file_extension==".png" or file_extension==".jpeg":
-            tasks.update_one({"_id": ObjectId(task_id)}, {"$set": {"started_at": datetime.datetime.now()}})
-            compute_img(file_path,op_new_f_name,filename,file_extension,task_id,fs)  
-            tasks.update_one({"_id": ObjectId(task_id)}, {"$set": {"completed_at": datetime.datetime.now()}})
             
-            logging.info(f"File {filee.filename} has been successfully saved ")
-            
-        elif file_extension==".mp4" or file_extension==".avi" or file_extension==".mov":
-            tasks.update_one({"_id": ObjectId(task_id)}, {"$set": {"started_at": datetime.datetime.now()}})
-            compute_video(file_path,op_new_f_name,filename,file_extension,task_id,fs)
-            tasks.update_one({"_id": ObjectId(task_id)}, {"$set": {"completed_at": datetime.datetime.now()}})
-            logging.info(f"File {filee.filename} has been successfully saved ")
+        if file_extension in [".jpg", ".png", ".jpeg"]:
+            compute_img(file_path, new_filename, filename, file_extension, task_id, fs)
+        elif file_extension in [".mp4", ".avi", ".mov"]:
+            compute_video(file_path, new_filename, filename, file_extension, task_id, fs)
         else:
             logging.error("File format not supported")
-            
-        # print(f"File {filee.filename} has been successfully saved to {file_path}")
         
-        return 
-
+        tasks.update_one({"_id": ObjectId(task_id)}, {"$set": {"completed_at": datetime.datetime.now()}})
+        logging.info(f"File {filee.filename} has been successfully saved ")
+        
+        return task_id
     except Exception as e:
-        print(f"An error occurred: {e}")
+        logging.error(f"An error occurred: {e}")
         return None
  
  
