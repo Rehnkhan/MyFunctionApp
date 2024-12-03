@@ -98,13 +98,14 @@ def compute_img(file_path,new_filename,filename,file_extension,task_id,fs):
         # Retrieve the old file's metadata
         old_file_id = old_file._id
         old_metadata = old_file.metadata if old_file.metadata else {}
+        old_content_type = old_file.contentType if old_file.contentType else {}
 
         # Delete the old file
         fs.delete(ObjectId(old_file_id))
 
         # Upload the computed file with the same _id and metadata
         with open(computed_file_path, "rb") as f:
-            fs.put(f, _id=ObjectId(old_file_id), filename=filename+file_extension, metadata=old_metadata)
+            fs.put(f, _id=ObjectId(old_file_id), filename=filename+file_extension, metadata=old_metadata,contentType=old_content_type)
 
     
     # print("File replaced successfully with the computed image.")
@@ -124,13 +125,14 @@ def compute_video(file_path,new_filename,filename,file_extension,task_id,fs):
         # Retrieve the old file's metadata
         old_file_id = old_file._id
         old_metadata = old_file.metadata if old_file.metadata else {}
+        old_content_type = old_file.contentType if old_file.contentType else {}
 
         # Delete the old file
         fs.delete(ObjectId(old_file_id))
 
         # Upload the computed file with the same _id and metadata
         with open(computed_file_path, "rb") as f:
-            fs.put(f, _id=ObjectId(old_file_id), filename=filename+file_extension, metadata=old_metadata)
+            fs.put(f, _id=ObjectId(old_file_id), filename=filename+file_extension, metadata=old_metadata,contentType=old_content_type)
 
     
     # print("File replaced successfully with the computed image.")
